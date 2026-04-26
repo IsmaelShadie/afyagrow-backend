@@ -1,7 +1,8 @@
 const router = require("express").Router();
 const { InferenceClient } = require("@huggingface/inference");
-const axios = require("axios");
+const { GoogleGenAI } = require("@google/genai");
 
+// POST /api/kinyarwanda/stt
 router.post("/stt", async (req, res) => {
   try {
     const { audio } = req.body;
@@ -18,37 +19,28 @@ router.post("/stt", async (req, res) => {
   }
 });
 
+// POST /api/kinyarwanda/tts — Gemini 3.1 Flash TTS
 router.post("/tts", async (req, res) => {
   try {
     const { text } = req.body;
-    const key = process.env.ELEVENLABS_API_KEY;
-    console.log("KEY LENGTH:", key ? key.length : "MISSING");
-    console.log("KEY PREVIEW:", key ? key.substring(0,15) : "NONE");
-
-    const response = await axios.post(
-      "https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb",
-      {
-        text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-      },
-      {
-        headers: {
-          "xi-api-key": key,
-          "Content-Type": "application/json",
-          "Accept": "audio/mpeg",
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: "Aoede" },
+          },
         },
-        responseType: "arraybuffer",
-        timeout: 30000,
-      }
-    );
-    const base64Audio = Buffer.from(response.data).toString("base64");
-    res.json({ audio: base64Audio, mimeType: "audio/mpeg" });
+      },
+    });
+    const audioData = response.candidates[0].content.parts[0].inlineData.data;
+    res.json({ audio: audioData, mimeType: "audio/wav" });
   } catch (err) {
-    const raw = err.response?.data ? Buffer.from(err.response.data).toString() : err.message;
-    console.error("TTS FULL ERROR:", raw);
-    console.error("STATUS:", err.response?.status);
-    res.status(500).json({ error: raw, status: err.response?.status, fallback: true });
+    console.error("TTS error:", err.message);
+    res.status(500).json({ error: err.message, fallback: true });
   }
 });
 
