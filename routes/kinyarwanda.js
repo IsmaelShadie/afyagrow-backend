@@ -1,27 +1,26 @@
 const router = require("express").Router();
 const axios  = require("axios");
 
-const HF_API = "https://api-inference.huggingface.co/models";
-const HEADERS = () => ({
+const HF = "https://api-inference.huggingface.co/models";
+const headers = () => ({
   "Authorization": `Bearer ${process.env.HF_API_KEY}`,
-  "Content-Type": "application/json",
 });
 
-// POST /api/kinyarwanda/stt
-// Speech to text — Kinyarwanda audio → text
+// POST /api/kinyarwanda/stt — Kinyarwanda speech to text
 router.post("/stt", async (req, res) => {
   try {
-    const { audio } = req.body; // base64 audio
+    const { audio } = req.body;
     const buffer = Buffer.from(audio, "base64");
     const response = await axios.post(
-      `${HF_API}/facebook/mms-300m`,
+      `${HF}/mbazaNLP/Whisper-Small-Kinyarwanda`,
       buffer,
       {
         headers: {
-          "Authorization": `Bearer ${process.env.HF_API_KEY}`,
+          ...headers(),
           "Content-Type": "audio/wav",
         },
         responseType: "json",
+        timeout: 30000,
       }
     );
     res.json({ transcript: response.data?.text || "" });
@@ -31,24 +30,23 @@ router.post("/stt", async (req, res) => {
   }
 });
 
-// POST /api/kinyarwanda/tts
-// Text to speech — Kinyarwanda text → audio
+// POST /api/kinyarwanda/tts — Kinyarwanda text to speech
 router.post("/tts", async (req, res) => {
   try {
     const { text } = req.body;
     const response = await axios.post(
-      `${HF_API}/mbazaNLP/kinyarwanda-tts-model`,
+      `${HF}/facebook/mms-tts-kin`,
       { inputs: text },
       {
-        headers: HEADERS(),
+        headers: { ...headers(), "Content-Type": "application/json" },
         responseType: "arraybuffer",
+        timeout: 30000,
       }
     );
     const base64Audio = Buffer.from(response.data).toString("base64");
     res.json({ audio: base64Audio, mimeType: "audio/wav" });
   } catch (err) {
     console.error("TTS error:", err.message);
-    // Fallback to browser TTS if model unavailable
     res.status(500).json({ error: err.message, fallback: true });
   }
 });
