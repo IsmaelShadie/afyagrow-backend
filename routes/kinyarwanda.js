@@ -1,8 +1,8 @@
 const router = require("express").Router();
-const axios = require("axios");
 const { InferenceClient } = require("@huggingface/inference");
+const { ElevenLabsClient } = require("elevenlabs");
 
-// POST /api/kinyarwanda/stt — Whisper Kinyarwanda STT
+// POST /api/kinyarwanda/stt
 router.post("/stt", async (req, res) => {
   try {
     const { audio } = req.body;
@@ -20,25 +20,29 @@ router.post("/stt", async (req, res) => {
   }
 });
 
-// POST /api/kinyarwanda/tts — mbazaNLP Gradio Space
+// POST /api/kinyarwanda/tts
 router.post("/tts", async (req, res) => {
   try {
     const { text } = req.body;
-    // Call mbazaNLP Kinyarwanda TTS Gradio Space API
-    const predict = await axios.post(
-      "https://mbazanlp-kinyarwanda-text-to-speech.hf.space/run/predict",
-      { data: [text] },
-      { headers: { "Content-Type": "application/json" }, timeout: 30000 }
-    );
-    const audioUrl = predict.data?.data?.[0];
-    if (!audioUrl) throw new Error("No audio returned");
-    // Fetch the audio file
-    const audioRes = await axios.get(
-      audioUrl.startsWith("http") ? audioUrl : `https://mbazanlp-kinyarwanda-text-to-speech.hf.space${audioUrl}`,
-      { responseType: "arraybuffer", timeout: 15000 }
-    );
-    const base64Audio = Buffer.from(audioRes.data).toString("base64");
-    res.json({ audio: base64Audio, mimeType: "audio/wav" });
+    const client = new ElevenLabsClient({
+      apiKey: process.env.ELEVENLABS_API_KEY,
+    });
+    // Use multilingual v2 model which supports Kinyarwanda
+    const audio = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
+      text,
+      model_id: "eleven_multilingual_v2",
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+      },
+    });
+    // Collect stream into buffer
+    const chunks = [];
+    for await (const chunk of audio) {
+      chunks.push(chunk);
+    }
+    const base64Audio = Buffer.concat(chunks).toString("base64");
+    res.json({ audio: base64Audio, mimeType: "audio/mpeg" });
   } catch (err) {
     console.error("TTS error:", err.message);
     res.status(500).json({ error: err.message, fallback: true });
