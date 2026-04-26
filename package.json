@@ -9,6 +9,7 @@
     "db:migrate": "psql $DATABASE_URL -f models/schema.sql"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.13.15",
     "africastalking": "^0.6.4",
     "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
