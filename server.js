@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors    = require("cors");
 const helmet  = require("helmet");
+const db      = require("./config/db");
+const fs      = require("fs");
 
 const app = express();
 
@@ -19,8 +21,8 @@ app.use("/api/children",  require("./routes/children"));
 app.use("/api/vitals",    require("./routes/vitals"));
 app.use("/api/sos",       require("./routes/sos"));
 app.use("/api/patients",  require("./routes/patients"));
-app.use("/api/voice",      require("./routes/voice"));
 app.use("/api/alerts",    require("./routes/alerts"));
+app.use("/api/voice",     require("./routes/voice"));
 
 app.get("/health", (req, res) =>
   res.json({ status: "ok", service: "AfyaGrow API", version: "1.0.0" })
@@ -31,5 +33,19 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || "Server error" });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log("AfyaGrow API running on port " + PORT));
+async function startServer() {
+  try {
+    // Auto-migrate database on startup
+    console.log("Running database migrations...");
+    const sql = fs.readFileSync("./models/schema.sql", "utf8");
+    await db.query(sql);
+    console.log("Database ready!");
+  } catch (e) {
+    console.log("Migration note:", e.message);
+  }
+
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log("AfyaGrow API running on port " + PORT));
+}
+
+startServer();
