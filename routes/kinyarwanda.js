@@ -1,25 +1,25 @@
 const router = require("express").Router();
 const axios  = require("axios");
 
-const HF = "https://api-inference.huggingface.co/models";
+const HF_ROUTER = "https://router.huggingface.co/hf-inference/models";
 const headers = () => ({
   "Authorization": `Bearer ${process.env.HF_API_KEY}`,
+  "Content-Type": "application/json",
 });
 
-// POST /api/kinyarwanda/stt — Kinyarwanda speech to text
+// POST /api/kinyarwanda/stt
 router.post("/stt", async (req, res) => {
   try {
     const { audio } = req.body;
     const buffer = Buffer.from(audio, "base64");
     const response = await axios.post(
-      `${HF}/mbazaNLP/Whisper-Small-Kinyarwanda`,
+      `${HF_ROUTER}/mbazaNLP/Whisper-Small-Kinyarwanda`,
       buffer,
       {
         headers: {
-          ...headers(),
+          "Authorization": `Bearer ${process.env.HF_API_KEY}`,
           "Content-Type": "audio/wav",
         },
-        responseType: "json",
         timeout: 30000,
       }
     );
@@ -30,15 +30,15 @@ router.post("/stt", async (req, res) => {
   }
 });
 
-// POST /api/kinyarwanda/tts — Kinyarwanda text to speech
+// POST /api/kinyarwanda/tts
 router.post("/tts", async (req, res) => {
   try {
     const { text } = req.body;
     const response = await axios.post(
-      `${HF}/facebook/mms-tts-kin`,
+      `${HF_ROUTER}/facebook/mms-tts-kin`,
       { inputs: text },
       {
-        headers: { ...headers(), "Content-Type": "application/json" },
+        headers: headers(),
         responseType: "arraybuffer",
         timeout: 30000,
       }
@@ -46,7 +46,7 @@ router.post("/tts", async (req, res) => {
     const base64Audio = Buffer.from(response.data).toString("base64");
     res.json({ audio: base64Audio, mimeType: "audio/wav" });
   } catch (err) {
-    console.error("TTS error:", err.message);
+    console.error("TTS error:", err.response?.data?.toString() || err.message);
     res.status(500).json({ error: err.message, fallback: true });
   }
 });
