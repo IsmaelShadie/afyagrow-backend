@@ -2,7 +2,6 @@ const router = require("express").Router();
 const { InferenceClient } = require("@huggingface/inference");
 const { GoogleGenAI } = require("@google/genai");
 
-// POST /api/kinyarwanda/stt
 router.post("/stt", async (req, res) => {
   try {
     const { audio } = req.body;
@@ -19,14 +18,13 @@ router.post("/stt", async (req, res) => {
   }
 });
 
-// POST /api/kinyarwanda/tts — Gemini 3.1 Flash TTS
 router.post("/tts", async (req, res) => {
   try {
     const { text } = req.body;
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
+      contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: ["AUDIO"],
         speechConfig: {
@@ -36,8 +34,9 @@ router.post("/tts", async (req, res) => {
         },
       },
     });
-    const audioData = response.candidates[0].content.parts[0].inlineData.data;
-    res.json({ audio: audioData, mimeType: "audio/wav" });
+    const part = response.candidates?.[0]?.content?.parts?.[0];
+    if (!part?.inlineData?.data) throw new Error("No audio data returned");
+    res.json({ audio: part.inlineData.data, mimeType: "audio/wav" });
   } catch (err) {
     console.error("TTS error:", err.message);
     res.status(500).json({ error: err.message, fallback: true });
