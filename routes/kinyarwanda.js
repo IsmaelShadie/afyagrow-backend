@@ -24,7 +24,7 @@ router.post("/tts", async (req, res) => {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: text }] }],
+      contents: text,
       config: {
         responseModalities: ["AUDIO"],
         speechConfig: {
@@ -34,9 +34,11 @@ router.post("/tts", async (req, res) => {
         },
       },
     });
-    const part = response.candidates?.[0]?.content?.parts?.[0];
-    if (!part?.inlineData?.data) throw new Error("No audio data returned");
-    res.json({ audio: part.inlineData.data, mimeType: "audio/wav" });
+    console.log("Response keys:", Object.keys(response));
+    const data = response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+      || response?.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!data) throw new Error("No audio: " + JSON.stringify(response).substring(0, 300));
+    res.json({ audio: data, mimeType: "audio/wav" });
   } catch (err) {
     console.error("TTS error:", err.message);
     res.status(500).json({ error: err.message, fallback: true });
