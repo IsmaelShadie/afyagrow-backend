@@ -21,6 +21,8 @@ app.use("/api/children",  require("./routes/children"));
 app.use("/api/vitals",    require("./routes/vitals"));
 app.use("/api/sos",       require("./routes/sos"));
 app.use("/api/patients",  require("./routes/patients"));
+app.use("/api/referrals", require("./routes/referrals"));
+app.use("/api/hmis",      require("./routes/hmis"));
 app.use("/api/alerts",    require("./routes/alerts"));
 app.use("/api/kinyarwanda", require("./routes/kinyarwanda"));
 app.use("/api/voice",     require("./routes/voice"));
